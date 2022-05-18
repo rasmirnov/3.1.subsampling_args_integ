@@ -67,16 +67,6 @@ RandomSubsetData<- function(object, rate, random.subset.seed = NULL, ...){
 subset_seurat_obj<- RandomSubsetData(seurat_obj, rate = rate)            # =0.8
 
 # original_ident<- Idents(subset_seurat_obj) 
-##### Way 1
-# ## make subset of data
-# res_names <- grep('snn_res', colnames(subset_seurat_obj@meta.data), value = T)
-# ## rename columns
-# res_names <-grep('snn_res', colnames(subset_seurat_obj@meta.data), value = T)
-# original_ident <- select(subset_seurat_obj@meta.data, res_names)
-# colms <- gsub("[^[:digit:]., ]", "", colnames(original_ident))
-# colms <- gsub("^[\\.*]", "", colms)
-# setnames(original_ident, old = colnames(original_ident), new = colms)
-# original_ident
 ##### Way 2: rows - res, cols - list with vectors of cells 
 res_names <- grep('snn_res', colnames(subset_seurat_obj@meta.data), value = T)
 # content: cell idents
@@ -147,7 +137,7 @@ subset_seurat_obj<- eval(parse(text=command))
 # res<- tibble::tibble(resolution = resolution, original_ident = list(original_ident),
 #                      recluster_ident = list(Idents(subset_seurat_obj)), round = run_id)    # run_id = '0'
 
-res_names <- grep('snn_res', colnames(subset_seurat_obj@meta.data), value = T)
+res_names <- grep('ed_snn_res', colnames(subset_seurat_obj@meta.data), value = T)         ####! because of the prefix 'integrated' 
 # content: cell idents
 all_res2 <- list()
 for (res in res_names) {
