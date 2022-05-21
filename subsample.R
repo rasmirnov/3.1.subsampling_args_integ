@@ -1,5 +1,10 @@
 ### TO DO
 ### --data = pbcm3k, --res = nargs, where list of resolutions 
+### 1)запусти через терминал(без slurm) и посмотри из 2го(htop) - не плодит ли дочерних
+### 2)slurm: уменьши память до 500MB
+### 3)slurm: укажи ortopus в BATCH таске через --nlist (погугли это вообщем)
+########! Вернуть тему с резолюшенами? Для каждого рана сохраняет строчку с измененным резолюшеном
+##### сейчас 1 ран - сразу 9 резолюшеном рекластеризует, но сохраняет в файл только рекластеризацию последнего
 
 library(Seurat)
 library(tidyverse)
@@ -7,7 +12,7 @@ library(argparse)
 library(data.table)
 
 ## SET VARIABLES
-#
+# #SBATCH --nodelist=orthrus-1
 parser <-  ArgumentParser()
 parser$add_argument('--data',
                     type = "character",
@@ -19,10 +24,10 @@ parser$add_argument('-i',                                   # immune.combined.sc
 parser$add_argument('--obj_name',
                     type = 'character',
                     help = 'name of a seurat_object')
-parser$add_argument('--res',
-                    nargs = '+',
-                    type = "character",
-                    help = 'resolution')
+# parser$add_argument('--res',
+#                     nargs = '+',
+#                     type = "character",
+#                     help = 'resolution')
 parser$add_argument('--run_id',
                     type = "character",
                     help = 'run_id')
@@ -34,21 +39,35 @@ argss <- parser$parse_args()
 
 print(argss)
 
-# argss$data <- '/mnt/tank/scratch/rasmirnov/code/jac_index/data/pbmc3k/pbmc3k_seurat.RData'
+# argss$data <- '/mnt/tank/scratch/rasmirnov/code/jac_index/data/pbmc3k/pbmc3k_tutorial.RData'
 # argss$obj <- 'pbmc3k'
 # argss$rate <- 0.8
 # argss$run_id <- '0'
+
+# load('/mnt/tank/scratch/rasmirnov/code/Time_benchmarking/Datasets/processed/pbmc3k/pbmc3k_tutorial.RData')
+# seurat_obj <- get("immune.combined.sct")
+# seurat_obj <- get("pbmc3k")
+# obj_name <- "pbmc3k"
+# results_path <- "/mnt/tank/scratch/rasmirnov/code/chooseR/results/stestis/stestis_test"
+# resolution <- c('0.2','0.4')
+# resolution <- c('0.05', '0.1', '0.2', '0.4', '0.6', '0.8', '1', '1.5', '2', '5') # 0.1 0.2 0.4 0.6 0.8 1 1.5 2 5
+# run_id <- '1'
+# run_id <- '0'
+# rate <- 0.8
+
+####### Real params
 load(argss$data)
 seurat_obj<- get(argss$obj_integ)
 obj_name <- argss$obj_name
-# seurat_obj <- "pbmc3k$SCT_snn_res.0.05" 
-# seurat_obj %>% data.frame() %>% nrow()
+## seurat_obj <- "pbmc3k$SCT_snn_res.0.05"
+## seurat_obj %>% data.frame() %>% nrow()
 ##### how to leave all 2600 samples for each resolution after subset() function?(extra args?)
-resolution<- argss$res
-run_id<- argss$run_id            #NULL
-rate <- argss$rate               #NULL
+# resolution<- argss$res
+run_id<- argss$run_id
+rate <- argss$rate
+# resolution <- c('0.2','0.4')
 ## test vector
-# resolution <- c('0.05', '0.1', '0.2', '0.4', '0.6', '0.8', '1', '1.5', '2', '5')
+# resolution <- c('0.1', '0.2', '0.4', '0.6', '0.8', '1', '1.5', '2', '5')
 
 
 #подавать на вход датасет с одним резолюш
@@ -81,15 +100,8 @@ all_res_df$original_ident <- all_res
 # all_res_df %>% View()
 
 PreprocessSubsetData<- function(object,
-                                variable.features.n = 3000,          # in pbmc3k eventually - 2000
                                 num.pc = 20,
                                 pc.use = NULL,
-                                score.thresh = 1e-5,
-                                sig.pc.thresh = 0.05,
-                                n.start = 100,
-                                nn.eps = 0,
-                                resolution = 0.8,
-                                k.param = 20,
                                 useSCTransform = TRUE,
                                 ...){
   if(!is.null(pc.use)){
@@ -98,17 +110,24 @@ PreprocessSubsetData<- function(object,
     }
   }
   meta.data.colnames<- object@meta.data %>% colnames()
-  vars.to.regress<- c("percent.mt","nFeature_RNA")
-  vars.to.regress<- vars.to.regress[vars.to.regress %in% meta.data.colnames]
+  # vars.to.regress<- c("percent.mt","nFeature_RNA")
+  # vars.to.regress<- vars.to.regress[vars.to.regress %in% meta.data.colnames]
   if(useSCTransform==TRUE){
-    object<- SCTransform(object, vars.to.regress = vars.to.regress,
-                         variable.features.n = variable.features.n, verbose = FALSE)  
+    object<- SCTransform(object, 
+                         method = "glmGamPoi", 
+                         vars.to.regress = "percent.mt", 
+                         verbose = FALSE)  
   }else{
     stop("The SCTransform method for normalization is the only method currently supported by this function.  If you wish to use the approach that involves NormalizeData, ScaleData, and FindVariableFeatures and enables use of the Jackstraw procedure for determining which PCs to use please use the PreprocessSubsetDataV2 function from the scclusteval R package.")
     
   }
-  object<- RunPCA(object = object, features = VariableFeatures(object = object),
-                  npcs = num.pc)
+  object <- FindVariableFeatures(object,           ###
+                                 selection.method = "vst", 
+                                 nfeatures = 2000)
+  all.genes <- rownames(object)                   ###
+  object <- ScaleData(object, features = all.genes)     ###
+  
+  object<- RunPCA(object = object, features = VariableFeatures(object = object))
   if(is.null(pc.use)){
     pc.use <- num.pc
     message("SCTransform is being used and the Jackstraw procedure for determining which PCs to use is not compatable with this procedure. Since pc.use was not specified it is being automatically set to num.pc")
@@ -117,18 +136,17 @@ PreprocessSubsetData<- function(object,
   pc.use.meta<- rep(pc.use, length(colnames(object)))
   names(pc.use.meta)<- colnames(object)
   object<- AddMetaData(object = object, metadata = pc.use.meta, col.name = "pc.use")
-  object<- FindNeighbors(object, dims = 1:pc.use, k.param = k.param, nn.eps = nn.eps,
-                         verbose = FALSE, reduction = "pca", force.recalc = TRUE)
-  object <- FindClusters(object = object,
-                         n.start = n.start,
-                         resolution = resolution, ## c(0.2, 0.4, ....)
-                         verbose = FALSE)
+  object<- FindNeighbors(object, dims = 1:20)
+  object <- FindClusters(object = object,                       ### проблема: не сохраняет значения reclust предыдущих резолюшенов
+                         resolution = c(0.1, 0.2, 0.4, 0.6, 0.8, 1, 1.5, 2, 5))         ### 
   return(object)
 }
 
 ## after reprocessing, the ident slot will be updated with the new cluster id
-command<- paste("PreprocessSubsetData", "(", "subset_seurat_obj,",
-                "resolution=", resolution, ")")
+###########? источник ошибки?
+# command<- paste("PreprocessSubsetData", "(", "subset_seurat_obj,",
+#                 "resolution=", resolution, ")")
+command<- paste("PreprocessSubsetData", "(", "subset_seurat_obj,", ")")
 
 subset_seurat_obj<- eval(parse(text=command))
 
@@ -137,7 +155,7 @@ subset_seurat_obj<- eval(parse(text=command))
 # res<- tibble::tibble(resolution = resolution, original_ident = list(original_ident),
 #                      recluster_ident = list(Idents(subset_seurat_obj)), round = run_id)    # run_id = '0'
 
-res_names <- grep('ed_snn_res', colnames(subset_seurat_obj@meta.data), value = T)         ####! because of the prefix 'integrated' 
+res_names <- grep('snn_res', colnames(subset_seurat_obj@meta.data), value = T)            # 'ed_snn_res' for integrated
 # content: cell idents
 all_res2 <- list()
 for (res in res_names) {
@@ -157,6 +175,9 @@ res$resolution <- gsub("[^[:digit:]., ]", "", res$resolution)
 res$resolution <- gsub("^[\\.*]", "", res$resolution)
 
 outfile<- paste0("subsample/subsample_", "round_", run_id, ".rds")
+# dir.create("/mnt/tank/scratch/rasmirnov/code/jac_index/scripts/argp_subsampling2/subsample", recursive = T)
+# outfile<- paste0("/mnt/tank/scratch/rasmirnov/code/jac_index/scripts/argp_subsampling2/",
+#                  "subsample/subsample_", "round_", run_id, ".rds")
 saveRDS(res, file = outfile)
 
 ## make sure it is not empty file
