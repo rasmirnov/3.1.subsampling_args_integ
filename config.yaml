@@ -1,0 +1,13 @@
+input_seurat: "/mnt/tank/scratch/rasmirnov/code/Time_benchmarking/Datasets/processed/pbmc3k/pbmc3k_tutorial.RData"
+integ_seurat: 'pbmc3k'
+name_seurat: "pbmc3k"
+subsample_rate: 0.8
+num_of_subsample: 100
+# num_of_subsample: 2
+# since I didn't change the k.param in FindClusters, I put the default k.param = 30 here
+subsample_ks: "30"
+# subsample_resolutions: "0.1 0.2 0.4 0.6 0.8 1 1.5 2 5"  
+subsample_resolutions: "0.2 0.4 0.6"            #don't use it in subsample.R               
+## number of PCs to use, pc.use 
+# subsample_pcs: "50"
+rscript: '/scratch/opt/R/4.0.5/bin/Rscript'
