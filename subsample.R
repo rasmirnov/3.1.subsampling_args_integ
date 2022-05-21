@@ -1,18 +1,9 @@
-### TO DO
-### --data = pbcm3k, --res = nargs, where list of resolutions 
-### 1)запусти через терминал(без slurm) и посмотри из 2го(htop) - не плодит ли дочерних
-### 2)slurm: уменьши память до 500MB
-### 3)slurm: укажи ortopus в BATCH таске через --nlist (погугли это вообщем)
-########! Вернуть тему с резолюшенами? Для каждого рана сохраняет строчку с измененным резолюшеном
-##### сейчас 1 ран - сразу 9 резолюшеном рекластеризует, но сохраняет в файл только рекластеризацию последнего
-
 library(Seurat)
 library(tidyverse)
 library(argparse)
 library(data.table)
 
 ## SET VARIABLES
-# #SBATCH --nodelist=orthrus-1
 parser <-  ArgumentParser()
 parser$add_argument('--data',
                     type = "character",
@@ -39,35 +30,13 @@ argss <- parser$parse_args()
 
 print(argss)
 
-# argss$data <- '/mnt/tank/scratch/rasmirnov/code/jac_index/data/pbmc3k/pbmc3k_tutorial.RData'
-# argss$obj <- 'pbmc3k'
-# argss$rate <- 0.8
-# argss$run_id <- '0'
-
-# load('/mnt/tank/scratch/rasmirnov/code/Time_benchmarking/Datasets/processed/pbmc3k/pbmc3k_tutorial.RData')
-# seurat_obj <- get("immune.combined.sct")
-# seurat_obj <- get("pbmc3k")
-# obj_name <- "pbmc3k"
-# results_path <- "/mnt/tank/scratch/rasmirnov/code/chooseR/results/stestis/stestis_test"
-# resolution <- c('0.2','0.4')
-# resolution <- c('0.05', '0.1', '0.2', '0.4', '0.6', '0.8', '1', '1.5', '2', '5') # 0.1 0.2 0.4 0.6 0.8 1 1.5 2 5
-# run_id <- '1'
-# run_id <- '0'
-# rate <- 0.8
-
 ####### Real params
 load(argss$data)
 seurat_obj<- get(argss$obj_integ)
 obj_name <- argss$obj_name
-## seurat_obj <- "pbmc3k$SCT_snn_res.0.05"
-## seurat_obj %>% data.frame() %>% nrow()
-##### how to leave all 2600 samples for each resolution after subset() function?(extra args?)
 # resolution<- argss$res
 run_id<- argss$run_id
 rate <- argss$rate
-# resolution <- c('0.2','0.4')
-## test vector
-# resolution <- c('0.1', '0.2', '0.4', '0.6', '0.8', '1', '1.5', '2', '5')
 
 
 #подавать на вход датасет с одним резолюш
@@ -97,7 +66,6 @@ for (res in res_names) {
 
 all_res_df <- data.frame(resolution = res_names)
 all_res_df$original_ident <- all_res
-# all_res_df %>% View()
 
 PreprocessSubsetData<- function(object,
                                 num.pc = 20,
@@ -137,23 +105,17 @@ PreprocessSubsetData<- function(object,
   names(pc.use.meta)<- colnames(object)
   object<- AddMetaData(object = object, metadata = pc.use.meta, col.name = "pc.use")
   object<- FindNeighbors(object, dims = 1:20)
-  object <- FindClusters(object = object,                       ### проблема: не сохраняет значения reclust предыдущих резолюшенов
-                         resolution = c(0.1, 0.2, 0.4, 0.6, 0.8, 1, 1.5, 2, 5))         ### 
+  object <- FindClusters(object = object,                  
+                         resolution = c(0.1, 0.2, 0.4, 0.6, 0.8, 1, 1.5, 2, 5))          
   return(object)
 }
 
-## after reprocessing, the ident slot will be updated with the new cluster id
 ###########? источник ошибки?
 # command<- paste("PreprocessSubsetData", "(", "subset_seurat_obj,",
 #                 "resolution=", resolution, ")")
 command<- paste("PreprocessSubsetData", "(", "subset_seurat_obj,", ")")
 
 subset_seurat_obj<- eval(parse(text=command))
-
-# should be 1 rds file per 100 run (for one resolution - 100 runs)
-## data.frame with all resolutions
-# res<- tibble::tibble(resolution = resolution, original_ident = list(original_ident),
-#                      recluster_ident = list(Idents(subset_seurat_obj)), round = run_id)    # run_id = '0'
 
 res_names <- grep('snn_res', colnames(subset_seurat_obj@meta.data), value = T)            # 'ed_snn_res' for integrated
 # content: cell idents
@@ -165,9 +127,7 @@ for (res in res_names) {
 
 all_res_df2 <- data.frame(resolution = res_names)
 all_res_df2$recluster_ident <- all_res2
-all_res_df2$round <- run_id                            # '0'
-# all_res_df2 %>% View()
-# all_res_df2[ , 2] %>% head(3)
+all_res_df2$round <- run_id                          
 
 res <- cbind(all_res_df, all_res_df2[ , 2:3])                            # and add round
 
