@@ -1,1 +1,1 @@
-Designed for the subsampling of integrated Seurat objects.
+Designed for the subsampling of single or integrated Seurat objects.
