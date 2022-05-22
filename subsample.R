@@ -41,7 +41,7 @@ rate <- argss$rate
 
 #подавать на вход датасет с одним резолюш
 RandomSubsetData<- function(object, rate, random.subset.seed = NULL, ...){
-  ncells<- nrow(object@meta.data)                 # pbmc3k$SCT_snn_res.0.05 %>% data.frame() %>% nrow()
+  ncells<- nrow(object@meta.data)                
   ncells.subsample<- round(ncells * rate)
   
   set.seed(random.subset.seed)
@@ -52,7 +52,7 @@ RandomSubsetData<- function(object, rate, random.subset.seed = NULL, ...){
   return(object)
 }
 
-subset_seurat_obj<- RandomSubsetData(seurat_obj, rate = rate)            # =0.8
+subset_seurat_obj<- RandomSubsetData(seurat_obj, rate = rate)           
 
 # original_ident<- Idents(subset_seurat_obj) 
 ##### Way 2: rows - res, cols - list with vectors of cells 
@@ -106,7 +106,7 @@ PreprocessSubsetData<- function(object,
   object<- AddMetaData(object = object, metadata = pc.use.meta, col.name = "pc.use")
   object<- FindNeighbors(object, dims = 1:20)
   object <- FindClusters(object = object,                  
-                         resolution = c(0.1, 0.2, 0.4, 0.6, 0.8, 1, 1.5, 2, 5))          
+                         resolution = c(0.1, 0.2, 0.4, 0.6, 0.8, 1, 1.5, 2, 5))       # for ifnb only you have to add 0.05 res (#rows should be the same)   
   return(object)
 }
 
@@ -117,7 +117,7 @@ command<- paste("PreprocessSubsetData", "(", "subset_seurat_obj,", ")")
 
 subset_seurat_obj<- eval(parse(text=command))
 
-res_names <- grep('snn_res', colnames(subset_seurat_obj@meta.data), value = T)            # 'ed_snn_res' for integrated
+res_names <- grep('snn_res', colnames(subset_seurat_obj@meta.data), value = T)            # 'SCT_snn_res' or 'ed_snn_res'? for integrated
 # content: cell idents
 all_res2 <- list()
 for (res in res_names) {
